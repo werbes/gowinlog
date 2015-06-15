@@ -5,7 +5,6 @@ package winlog
 import (
 	"fmt"
 	"time"
-	"unsafe"
 )
 
 func (self *WinLogWatcher) Event() <-chan *WinLogEvent {
@@ -240,15 +239,9 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
 			}
 		}
-
-		CloseEventHandle(uint64(publisherHandle))
-		Free(unsafe.Pointer(renderedFields))
 	}
 
-	// Return an error if we couldn't render anything useful
-	if xmlErr != nil && renderedFieldsErr != nil {
-		return nil, fmt.Errorf("Failed to render event values and XML: %v", []error{renderedFieldsErr, xmlErr})
-	}
+	CloseEventHandle(uint64(publisherHandle))
 
 	event := WinLogEvent{
 		Xml:    xml,

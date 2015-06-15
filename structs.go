@@ -91,4 +91,3 @@ type LogEventCallbackWrapper struct {
 	callback          LogEventCallback
 	subscribedChannel string
 }
-

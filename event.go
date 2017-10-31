@@ -154,11 +154,11 @@ func getTestEventHandle() (EventHandle, error) {
 }
 
 func eventCallback(Action uint32, Context unsafe.Pointer, handle syscall.Handle) uintptr {
-	watcher := (*LogEventCallbackWrapper)(Context).callback
+	cbWrap := (*LogEventCallbackWrapper)(Context)
 	if Action == 0 {
-		watcher.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
+		cbWrap.callback.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
 	} else {
-		watcher.PublishEvent(EventHandle(handle))
+		cbWrap.callback.PublishEvent(EventHandle(handle), cbWrap.subscribedChannel)
 	}
 	return 0
 }

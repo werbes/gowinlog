@@ -188,55 +188,78 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	var publisherHandleErr error
 
 	// Render XML, any error is stored in the returned WinLogEvent
-	xml, xmlErr := RenderEventXML(handle)
+	// xml, xmlErr := RenderEventXML(handle)
 
 	// Render the values
 	renderedFields, renderedFieldsErr := RenderEventValues(self.renderContext, handle)
 	if renderedFieldsErr == nil {
 		// If fields don't exist we include the nil value
-		computerName, _ = RenderStringField(renderedFields, EvtSystemComputer)
-		providerName, _ = RenderStringField(renderedFields, EvtSystemProviderName)
-		channel, _ = RenderStringField(renderedFields, EvtSystemChannel)
-		level, _ = RenderUIntField(renderedFields, EvtSystemLevel)
-		task, _ = RenderUIntField(renderedFields, EvtSystemTask)
-		opcode, _ = RenderUIntField(renderedFields, EvtSystemOpcode)
-		recordId, _ = RenderUIntField(renderedFields, EvtSystemEventRecordId)
-		qualifiers, _ = RenderUIntField(renderedFields, EvtSystemQualifiers)
-		eventId, _ = RenderUIntField(renderedFields, EvtSystemEventID)
-		processId, _ = RenderUIntField(renderedFields, EvtSystemProcessID)
-		threadId, _ = RenderUIntField(renderedFields, EvtSystemThreadID)
-		version, _ = RenderUIntField(renderedFields, EvtSystemVersion)
-		created, _ = RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
+		computerName, _ = renderedFields.String(EvtSystemComputer)
+		providerName, _ = renderedFields.String(EvtSystemProviderName)
+		channel, _ = renderedFields.String(EvtSystemChannel)
+		level, _ = renderedFields.Uint(EvtSystemLevel)
+		task, _ = renderedFields.Uint(EvtSystemTask)
+		opcode, _ = renderedFields.Uint(EvtSystemOpcode)
+		recordId, _ = renderedFields.Uint(EvtSystemEventRecordId)
+		qualifiers, _ = renderedFields.Uint(EvtSystemQualifiers)
+		eventId, _ = renderedFields.Uint(EvtSystemEventID)
+		processId, _ = renderedFields.Uint(EvtSystemProcessID)
+		threadId, _ = renderedFields.Uint(EvtSystemThreadID)
+		version, _ = renderedFields.Uint(EvtSystemVersion)
+		created, _ = renderedFields.FileTime(EvtSystemTimeCreated)
 
 		// Render localized fields
 		publisherHandle, publisherHandleErr = GetEventPublisherHandle(renderedFields)
 		if publisherHandleErr == nil {
+			var err error
+
 			if self.renderMessage {
-				msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+				msgText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderMessage", err)
+				}
 			}
 
 			if self.renderLevel {
-				lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+				lvlText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderLevel", err)
+				}
 			}
 
 			if self.renderTask {
-				taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+				taskText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for rednerTask", err)
+				}
 			}
 
 			if self.renderProvider {
-				providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+				providerText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderProvider", err)
+				}
 			}
 
 			if self.renderOpcode {
-				opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+				opcodeText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderOpcode", err)
+				}
 			}
 
 			if self.renderChannel {
-				channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+				channelText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderChannel", err)
+				}
 			}
 
 			if self.renderId {
-				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+				idText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderId", err)
+				}
 			}
 		}
 	}
@@ -244,8 +267,8 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	CloseEventHandle(uint64(publisherHandle))
 
 	event := WinLogEvent{
-		Xml:    xml,
-		XmlErr: xmlErr,
+		// Xml:    xml,
+		// XmlErr: xmlErr,
 
 		ProviderName:      providerName,
 		EventId:           eventId,

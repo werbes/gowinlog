@@ -3,7 +3,7 @@ Go library for subscribing to the Windows Event Log.
 
 Godocs
 =======
-[gowinlog v0](https://gopkg.in/alanctgardner/gowinlog.v0))
+[gowinlog v0](https://gopkg.in/alanctgardner/gowinlog.v0)
 
 Installation
 =======

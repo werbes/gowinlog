@@ -139,13 +139,18 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 	return nil
 }
 
-func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatcher) error {
-	cancelErr := CancelEventHandle(uint64(watch.subscription))
-	closeErr := CloseEventHandle(uint64(watch.subscription))
-	CloseEventHandle(uint64(watch.bookmark))
+func (self *WinLogWatcher) RemoveSubscription(channel string) error {
 	self.watchMutex.Lock()
+	defer self.watchMutex.Unlock()
+
+	var cancelErr, closeErr error
+	if watch, ok := self.watches[channel]; ok {
+		cancelErr = CancelEventHandle(uint64(watch.subscription))
+		closeErr = CloseEventHandle(uint64(watch.subscription))
+		CloseEventHandle(uint64(watch.bookmark))
+	}
+
 	delete(self.watches, channel)
-	self.watchMutex.Unlock()
 	if cancelErr != nil {
 		return cancelErr
 	}
@@ -154,12 +159,9 @@ func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatc
 
 // Remove all subscriptions from this watcher and shut down.
 func (self *WinLogWatcher) Shutdown() {
-	self.watchMutex.Lock()
-	watches := self.watches
-	self.watchMutex.Unlock()
 	close(self.shutdown)
-	for channel, watch := range watches {
-		self.removeSubscription(channel, watch)
+	for channel, _ := range self.watches {
+		self.RemoveSubscription(channel)
 	}
 	CloseEventHandle(uint64(self.renderContext))
 	close(self.errChan)

@@ -27,49 +27,15 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		eventChan:      make(chan *WinLogEvent),
 		renderContext:  cHandle,
 		watches:        make(map[string]*channelWatcher),
-		renderMessage:  true,
-		renderLevel:    true,
-		renderTask:     true,
-		renderProvider: true,
-		renderOpcode:   true,
-		renderChannel:  true,
-		renderId:       true,
+		RenderKeywords: true,
+		RenderMessage:  true,
+		RenderLevel:    true,
+		RenderTask:     true,
+		RenderProvider: true,
+		RenderOpcode:   true,
+		RenderChannel:  true,
+		RenderId:       true,
 	}, nil
-}
-
-// Whether to use EvtFormatMessage to render the event message
-func (self *WinLogWatcher) SetRenderMessage(render bool) {
-	self.renderMessage = render
-}
-
-// Whether to use EvtFormatMessage to render the event level
-func (self *WinLogWatcher) SetRenderLevel(render bool) {
-	self.renderLevel = render
-}
-
-// Whether to use EvtFormatMessage to render the event task
-func (self *WinLogWatcher) SetRenderTask(render bool) {
-	self.renderTask = render
-}
-
-// Whether to use EvtFormatMessage to render the event provider
-func (self *WinLogWatcher) SetRenderProvider(render bool) {
-	self.renderProvider = render
-}
-
-// Whether to use EvtFormatMessage to render the event opcode
-func (self *WinLogWatcher) SetRenderOpcode(render bool) {
-	self.renderOpcode = render
-}
-
-// Whether to use EvtFormatMessage to render the event channel
-func (self *WinLogWatcher) SetRenderChannel(render bool) {
-	self.renderChannel = render
-}
-
-// Whether to use EvtFormatMessage to render the event ID
-func (self *WinLogWatcher) SetRenderId(render bool) {
-	self.renderId = render
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event
@@ -138,13 +104,18 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 	return nil
 }
 
-func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatcher) error {
-	cancelErr := CancelEventHandle(uint64(watch.subscription))
-	closeErr := CloseEventHandle(uint64(watch.subscription))
-	CloseEventHandle(uint64(watch.bookmark))
+func (self *WinLogWatcher) RemoveSubscription(channel string) error {
 	self.watchMutex.Lock()
+	defer self.watchMutex.Unlock()
+
+	var cancelErr, closeErr error
+	if watch, ok := self.watches[channel]; ok {
+		cancelErr = CancelEventHandle(uint64(watch.subscription))
+		closeErr = CloseEventHandle(uint64(watch.subscription))
+		CloseEventHandle(uint64(watch.bookmark))
+	}
+
 	delete(self.watches, channel)
-	self.watchMutex.Unlock()
 	if cancelErr != nil {
 		return cancelErr
 	}
@@ -153,12 +124,9 @@ func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatc
 
 // Remove all subscriptions from this watcher and shut down.
 func (self *WinLogWatcher) Shutdown() {
-	self.watchMutex.Lock()
-	watches := self.watches
-	self.watchMutex.Unlock()
 	close(self.shutdown)
-	for channel, watch := range watches {
-		self.removeSubscription(channel, watch)
+	for channel, _ := range self.watches {
+		self.RemoveSubscription(channel)
 	}
 	CloseEventHandle(uint64(self.renderContext))
 	close(self.errChan)
@@ -181,61 +149,63 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	var created time.Time
 
 	// Localized fields
-	var msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
+	var keywordsText, msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
 
 	// Publisher fields
 	var publisherHandle PublisherHandle
 	var publisherHandleErr error
 
-	// Render XML, any error is stored in the returned WinLogEvent
-	xml, xmlErr := RenderEventXML(handle)
-
 	// Render the values
 	renderedFields, renderedFieldsErr := RenderEventValues(self.renderContext, handle)
 	if renderedFieldsErr == nil {
 		// If fields don't exist we include the nil value
-		computerName, _ = RenderStringField(renderedFields, EvtSystemComputer)
-		providerName, _ = RenderStringField(renderedFields, EvtSystemProviderName)
-		channel, _ = RenderStringField(renderedFields, EvtSystemChannel)
-		level, _ = RenderUIntField(renderedFields, EvtSystemLevel)
-		task, _ = RenderUIntField(renderedFields, EvtSystemTask)
-		opcode, _ = RenderUIntField(renderedFields, EvtSystemOpcode)
-		recordId, _ = RenderUIntField(renderedFields, EvtSystemEventRecordId)
-		qualifiers, _ = RenderUIntField(renderedFields, EvtSystemQualifiers)
-		eventId, _ = RenderUIntField(renderedFields, EvtSystemEventID)
-		processId, _ = RenderUIntField(renderedFields, EvtSystemProcessID)
-		threadId, _ = RenderUIntField(renderedFields, EvtSystemThreadID)
-		version, _ = RenderUIntField(renderedFields, EvtSystemVersion)
-		created, _ = RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
+		computerName, _ = renderedFields.String(EvtSystemComputer)
+		providerName, _ = renderedFields.String(EvtSystemProviderName)
+		channel, _ = renderedFields.String(EvtSystemChannel)
+		level, _ = renderedFields.Uint(EvtSystemLevel)
+		task, _ = renderedFields.Uint(EvtSystemTask)
+		opcode, _ = renderedFields.Uint(EvtSystemOpcode)
+		recordId, _ = renderedFields.Uint(EvtSystemEventRecordId)
+		qualifiers, _ = renderedFields.Uint(EvtSystemQualifiers)
+		eventId, _ = renderedFields.Uint(EvtSystemEventID)
+		processId, _ = renderedFields.Uint(EvtSystemProcessID)
+		threadId, _ = renderedFields.Uint(EvtSystemThreadID)
+		version, _ = renderedFields.Uint(EvtSystemVersion)
+		created, _ = renderedFields.FileTime(EvtSystemTimeCreated)
 
 		// Render localized fields
 		publisherHandle, publisherHandleErr = GetEventPublisherHandle(renderedFields)
 		if publisherHandleErr == nil {
-			if self.renderMessage {
+
+			if self.RenderKeywords {
+				keywordsText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageKeyword)
+			}
+
+			if self.RenderMessage {
 				msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
 			}
 
-			if self.renderLevel {
+			if self.RenderLevel {
 				lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
 			}
 
-			if self.renderTask {
+			if self.RenderTask {
 				taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
 			}
 
-			if self.renderProvider {
+			if self.RenderProvider {
 				providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
 			}
 
-			if self.renderOpcode {
+			if self.RenderOpcode {
 				opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
 			}
 
-			if self.renderChannel {
+			if self.RenderChannel {
 				channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
 			}
 
-			if self.renderId {
+			if self.RenderId {
 				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
 			}
 		}
@@ -244,9 +214,6 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	CloseEventHandle(uint64(publisherHandle))
 
 	event := WinLogEvent{
-		Xml:    xml,
-		XmlErr: xmlErr,
-
 		ProviderName:      providerName,
 		EventId:           eventId,
 		Qualifiers:        qualifiers,
@@ -262,6 +229,7 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		Version:           version,
 		RenderedFieldsErr: renderedFieldsErr,
 
+		Keywords:           keywordsText,
 		Msg:                msgText,
 		LevelText:          lvlText,
 		TaskText:           taskText,

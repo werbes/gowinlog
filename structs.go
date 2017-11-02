@@ -28,15 +28,11 @@ type WinLogEvent struct {
 	LevelText          string
 	TaskText           string
 	OpcodeText         string
-	Keywords           []string
+	Keywords           string
 	ChannelText        string
 	ProviderText       string
 	IdText             string
 	PublisherHandleErr error
-
-	// XML body
-	Xml    string
-	XmlErr error
 
 	// Serialied XML bookmark to
 	// restart at this event
@@ -67,13 +63,14 @@ type WinLogWatcher struct {
 
 	// Optionally render localized fields. EvtFormatMessage() is slow, so
 	// skipping these fields provides a big speedup.
-	renderMessage  bool
-	renderLevel    bool
-	renderTask     bool
-	renderProvider bool
-	renderOpcode   bool
-	renderChannel  bool
-	renderId       bool
+	RenderKeywords bool
+	RenderMessage  bool
+	RenderLevel    bool
+	RenderTask     bool
+	RenderProvider bool
+	RenderOpcode   bool
+	RenderChannel  bool
+	RenderId       bool
 }
 
 type SysRenderContext uint64

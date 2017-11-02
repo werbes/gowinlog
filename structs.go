@@ -28,7 +28,7 @@ type WinLogEvent struct {
 	LevelText          string
 	TaskText           string
 	OpcodeText         string
-	Keywords           []string
+	Keywords           string
 	ChannelText        string
 	ProviderText       string
 	IdText             string
@@ -67,6 +67,7 @@ type WinLogWatcher struct {
 
 	// Optionally render localized fields. EvtFormatMessage() is slow, so
 	// skipping these fields provides a big speedup.
+	renderKeywords bool
 	renderMessage  bool
 	renderLevel    bool
 	renderTask     bool

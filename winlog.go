@@ -27,6 +27,7 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		eventChan:      make(chan *WinLogEvent),
 		renderContext:  cHandle,
 		watches:        make(map[string]*channelWatcher),
+		renderKeywords: true,
 		renderMessage:  true,
 		renderLevel:    true,
 		renderTask:     true,
@@ -181,7 +182,7 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	var created time.Time
 
 	// Localized fields
-	var msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
+	var keywordsText, msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
 
 	// Publisher fields
 	var publisherHandle PublisherHandle
@@ -212,6 +213,13 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		publisherHandle, publisherHandleErr = GetEventPublisherHandle(renderedFields)
 		if publisherHandleErr == nil {
 			var err error
+
+			if self.renderKeywords {
+				keywordsText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageKeyword)
+				if err != nil {
+					fmt.Println("Got error calling FormatMessage for renderKeywords", err)
+				}
+			}
 
 			if self.renderMessage {
 				msgText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
@@ -285,6 +293,7 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		Version:           version,
 		RenderedFieldsErr: renderedFieldsErr,
 
+		Keywords:           keywordsText,
 		Msg:                msgText,
 		LevelText:          lvlText,
 		TaskText:           taskText,

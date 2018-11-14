@@ -2,8 +2,6 @@
 
 package winlog
 
-import "C"
-
 import (
 	"fmt"
 	"syscall"

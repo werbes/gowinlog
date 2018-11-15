@@ -3,6 +3,7 @@
 package winlog
 
 import (
+	"bytes"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -98,6 +99,30 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 		return nil, err
 	}
 	return NewEvtVariant(buffer), nil
+}
+
+// Render the event as XML.
+func RenderEventXML(eventHandle EventHandle) (string, error) {
+	var bufferUsed, propertyCount uint32
+
+	err := EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, 0, nil, &bufferUsed, &propertyCount)
+
+	if bufferUsed == 0 {
+		return "", err
+	}
+
+	buffer := make([]byte, bufferUsed)
+	bufSize := bufferUsed
+
+	err = EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
+	if err != nil {
+		return err.Error(), err
+	}
+
+	//Remove null bytes
+	xml := bytes.Replace(buffer, []byte("\x00"), []byte{}, -1)
+
+	return string(xml), nil
 }
 
 /* Get a handle that represents the publisher of the event, given the rendered event values. */

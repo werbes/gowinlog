@@ -7,6 +7,10 @@ import (
 
 // Stores the common fields from a log event
 type WinLogEvent struct {
+	//XML
+	Xml    string
+	XmlErr error
+
 	// From EvtRender
 	ProviderName      string
 	EventId           uint64

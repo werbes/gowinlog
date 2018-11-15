@@ -157,6 +157,8 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 
 	// Render the values
 	renderedFields, renderedFieldsErr := RenderEventValues(self.renderContext, handle)
+	xml, xmlErr := RenderEventXML(handle)
+
 	if renderedFieldsErr == nil {
 		// If fields don't exist we include the nil value
 		computerName, _ = renderedFields.String(EvtSystemComputer)
@@ -214,6 +216,8 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	CloseEventHandle(uint64(publisherHandle))
 
 	event := WinLogEvent{
+		Xml:               xml,
+		XmlErr:            xmlErr,
 		ProviderName:      providerName,
 		EventId:           eventId,
 		Qualifiers:        qualifiers,

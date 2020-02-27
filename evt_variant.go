@@ -5,7 +5,7 @@ import (
 	"time"
 	"unsafe"
 
-	syscall "golang.org/x/sys/windows"
+	wincall "golang.org/x/sys/windows"
 )
 
 /* Convenience functions to get values out of
@@ -69,7 +69,7 @@ func (e EvtVariant) String(index uint32) (string, error) {
 		return "", fmt.Errorf("EvtVariant at index %v was not of type string, type was %v", index, elem.Type)
 	}
 	wideString := (*[1 << 29]uint16)(unsafe.Pointer(uintptr(elem.Data)))
-	str := syscall.UTF16ToString(wideString[0 : elem.Count+1])
+	str := wincall.UTF16ToString(wideString[0 : elem.Count+1])
 	return str, nil
 }
 

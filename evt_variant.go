@@ -2,9 +2,10 @@ package winlog
 
 import (
 	"fmt"
-	"syscall"
 	"time"
 	"unsafe"
+
+	syscall "golang.org/x/sys/windows"
 )
 
 /* Convenience functions to get values out of

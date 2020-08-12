@@ -25,28 +25,37 @@ Usage
 package main
 
 import (
-  "fmt"
-  "github.com/alanctgardner/gowinlog"
+	"fmt"
+	"time"
+
+	winlog "github.com/pavelblossom/gowinlog"
 )
 
 func main() {
-  watcher, err := winlog.NewWinLogWatcher()
-  if err != nil {
-    fmt.Printf("Couldn't create watcher: %v\n", err)
-    return
-  }
-  // Recieve any future messages on the Application channel
-  // "*" doesn't filter by any fields of the event
-  watcher.SubscribeFromNow("Application", "*")
-  for {
-    select {
-    case evt := <- watcher.Event():
-      // Print the event struct
-      fmt.Printf("Event: %v\n", evt)
-    case err := <- watcher.Error():
-      fmt.Printf("Error: %v\n\n", err)
-    }
-  }
+	fmt.Println("Starting...")
+	watcher, err := winlog.NewWinLogWatcher()
+	if err != nil {
+		fmt.Printf("Couldn't create watcher: %v\n", err)
+		return
+	}
+	// Recieve any future messages on the Application channel
+	// "*" doesn't filter by any fields of the event
+	watcher.SubscribeFromNow("Application", "*")
+	for {
+		select {
+		case evt := <-watcher.Event():
+			// Print the event struct
+			// fmt.Printf("\nEvent: %v\n", evt)
+			// or print basic output
+			fmt.Printf("\n%s: %s: %s\n", evt.LevelText, evt.ProviderName, evt.Msg)
+		case err := <-watcher.Error():
+			fmt.Printf("\nError: %v\n\n", err)
+		default:
+			// If no event is waiting, need to wait or do something else, otherwise
+			// the the app fails on deadlock.
+			<-time.After(1 * time.Second)
+		}
+	}
 }
 ```
 

@@ -1,4 +1,8 @@
 # gowinlog
+
+[![Build status](https://dev.azure.com/ofcoursedude/ofcoursedude/_apis/build/status/ofcoursedude-Go%20(preview)-CI)](https://dev.azure.com/ofcoursedude/ofcoursedude/_build/latest?definitionId=-1)
+
+
 Go library for subscribing to the Windows Event Log.
 
 Godocs

@@ -1,7 +1,7 @@
 # gowinlog
 
-[![Build status](https://dev.azure.com/ofcoursedude/ofcoursedude/_apis/build/status/ofcoursedude-Go%20(preview)-CI)](https://dev.azure.com/ofcoursedude/ofcoursedude/_build/latest?definitionId=-1)
-
+[![Go Build](https://github.com/ofcoursedude/gowinlog/actions/workflows/go.yml/badge.svg)](https://github.com/ofcoursedude/gowinlog/actions/workflows/go.yml)
+[![CodeQL](https://github.com/ofcoursedude/gowinlog/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/ofcoursedude/gowinlog/actions/workflows/codeql-analysis.yml)
 
 Go library for subscribing to the Windows Event Log.
 

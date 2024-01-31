@@ -1,42 +1,56 @@
+//go:build windows
 // +build windows
 
 package winlog
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 /* Interop code for wevtapi.dll */
 
 var (
-	winevtDll                *syscall.DLL
-	evtCreateBookmark        *syscall.Proc
-	evtUpdateBookmark        *syscall.Proc
-	evtRender                *syscall.Proc
-	evtClose                 *syscall.Proc
-	evtCancel                *syscall.Proc
-	evtFormatMessage         *syscall.Proc
-	evtCreateRenderContext   *syscall.Proc
-	evtSubscribe             *syscall.Proc
-	evtQuery                 *syscall.Proc
-	evtOpenPublisherMetadata *syscall.Proc
-	evtNext                  *syscall.Proc
+	evtCreateBookmark        *windows.LazyProc
+	evtUpdateBookmark        *windows.LazyProc
+	evtRender                *windows.LazyProc
+	evtClose                 *windows.LazyProc
+	evtCancel                *windows.LazyProc
+	evtFormatMessage         *windows.LazyProc
+	evtCreateRenderContext   *windows.LazyProc
+	evtSubscribe             *windows.LazyProc
+	evtQuery                 *windows.LazyProc
+	evtOpenPublisherMetadata *windows.LazyProc
+	evtNext                  *windows.LazyProc
 )
 
+func mustFindProc(mod *windows.LazyDLL, functionName string) *windows.LazyProc {
+	if mod.Load() != nil {
+		panic(fmt.Sprintf("error loading %v", mod.Name))
+	}
+	proc := mod.NewProc(functionName)
+	if proc == nil || proc.Find() != nil {
+		panic(fmt.Sprintf("missing %v from %v", functionName, mod.Name))
+	}
+	return proc
+}
+
 func init() {
-	winevtDll = syscall.MustLoadDLL("wevtapi.dll")
-	evtCreateBookmark = winevtDll.MustFindProc("EvtCreateBookmark")
-	evtUpdateBookmark = winevtDll.MustFindProc("EvtUpdateBookmark")
-	evtRender = winevtDll.MustFindProc("EvtRender")
-	evtClose = winevtDll.MustFindProc("EvtClose")
-	evtCancel = winevtDll.MustFindProc("EvtCancel")
-	evtFormatMessage = winevtDll.MustFindProc("EvtFormatMessage")
-	evtCreateRenderContext = winevtDll.MustFindProc("EvtCreateRenderContext")
-	evtSubscribe = winevtDll.MustFindProc("EvtSubscribe")
-	evtQuery = winevtDll.MustFindProc("EvtQuery")
-	evtOpenPublisherMetadata = winevtDll.MustFindProc("EvtOpenPublisherMetadata")
-	evtNext = winevtDll.MustFindProc("EvtNext")
+	winevtDll := windows.NewLazySystemDLL("wevtapi.dll")
+	evtCreateBookmark = mustFindProc(winevtDll, "EvtCreateBookmark")
+	evtUpdateBookmark = mustFindProc(winevtDll, "EvtUpdateBookmark")
+	evtRender = mustFindProc(winevtDll, "EvtRender")
+	evtClose = mustFindProc(winevtDll, "EvtClose")
+	evtCancel = mustFindProc(winevtDll, "EvtCancel")
+	evtFormatMessage = mustFindProc(winevtDll, "EvtFormatMessage")
+	evtCreateRenderContext = mustFindProc(winevtDll, "EvtCreateRenderContext")
+	evtSubscribe = mustFindProc(winevtDll, "EvtSubscribe")
+	evtQuery = mustFindProc(winevtDll, "EvtQuery")
+	evtOpenPublisherMetadata = mustFindProc(winevtDll, "EvtOpenPublisherMetadata")
+	evtNext = mustFindProc(winevtDll, "EvtNext")
 }
 
 type EVT_SUBSCRIBE_FLAGS int

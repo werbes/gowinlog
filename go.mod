@@ -1,4 +1,4 @@
-module github.com/ofcoursedude/gowinlog
+module github.com/myles-keough/gowinlog
 
 go 1.14
 

@@ -32,7 +32,7 @@ import (
 	"fmt"
 	"time"
 
-	winlog "github.com/ofcoursedude/gowinlog"
+	winlog "github.com/werbes/gowinlog"
 )
 
 func main() {

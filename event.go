@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winlog
@@ -12,8 +13,9 @@ import (
 /*Functionality related to events and listening to the event log*/
 
 // Get a handle to a render context which will render properties from the System element.
-//    Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
-//    handle must be closed with CloseEventHandle.
+//
+//	Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
+//	handle must be closed with CloseEventHandle.
 func GetSystemRenderContext() (SysRenderContext, error) {
 	context, err := EvtCreateRenderContext(0, 0, EvtRenderContextSystem)
 	if err != nil {
@@ -22,9 +24,12 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 	return SysRenderContext(context), nil
 }
 
-/* Get a handle for a event log subscription on the given channel.
-   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-   The resulting handle must be closed with CloseEventHandle. */
+/*
+Get a handle for a event log subscription on the given channel.
+
+	`query` is an XPath expression to filter the events on the channel - "*" allows all events.
+	The resulting handle must be closed with CloseEventHandle.
+*/
 func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -41,10 +46,13 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 	return ListenerHandle(listenerHandle), nil
 }
 
-/* Get a handle for an event log subscription on the given channel. Will begin at the
-   bookmarked event, or the closest possible event if the log has been truncated.
-   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-   The resulting handle must be closed with CloseEventHandle. */
+/*
+Get a handle for an event log subscription on the given channel. Will begin at the
+
+	bookmarked event, or the closest possible event if the log has been truncated.
+	`query` is an XPath expression to filter the events on the channel - "*" allows all events.
+	The resulting handle must be closed with CloseEventHandle.
+*/
 func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -64,18 +72,36 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 /* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
 func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
 	var size uint32 = 0
-	err := EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), 0, nil, &size)
+
+	// First, attempt to get the required buffer size
+	_, err := EvtFormatMessage(
+		syscall.Handle(eventPublisherHandle),
+		syscall.Handle(eventHandle),
+		0,      // Message ID
+		0,      // Value Count (no values passed)
+		nil,    // Pointer to values (null)
+		format, // Format flag
+	)
 	if err != nil {
-		if errno, ok := err.(syscall.Errno); !ok || errno != 122 {
-			// Check if the error is ERR_INSUFICIENT_BUFFER
+		if errno, ok := err.(syscall.Errno); !ok || errno != 122 { // ERROR_INSUFFICIENT_BUFFER
 			return "", err
 		}
 	}
+
+	// Allocate buffer space for the formatted message
 	buf := make([]uint16, size)
-	err = EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), uint32(len(buf)), &buf[0], &size)
+	_, err = EvtFormatMessage(
+		syscall.Handle(eventPublisherHandle),
+		syscall.Handle(eventHandle),
+		0,
+		0,
+		nil,
+		format,
+	)
 	if err != nil {
 		return "", err
 	}
+
 	return syscall.UTF16ToString(buf), nil
 }
 
@@ -84,9 +110,12 @@ func GetLastError() error {
 	return syscall.GetLastError()
 }
 
-/* Render the system properties from the event and returns an array of properties.
-   Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
-   or RenderUIntField depending on type. This buffer must be freed after use. */
+/*
+Render the system properties from the event and returns an array of properties.
+
+	Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
+	or RenderUIntField depending on type. This buffer must be freed after use.
+*/
 func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (EvtVariant, error) {
 	var bufferUsed uint32 = 0
 	var propertyCount uint32 = 0

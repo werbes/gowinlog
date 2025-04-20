@@ -71,20 +71,16 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 
 /* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
 func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
-	var requiredSize uint32
-	var usedSize uint32
+	var size uint32 = 0
 
-	// First call to determine buffer size
-	err := EvtFormatMessage(
+	// First, attempt to get the required buffer size
+	_, err := EvtFormatMessage(
 		syscall.Handle(eventPublisherHandle),
 		syscall.Handle(eventHandle),
-		0,             // Message ID
-		0,             // ValueCount
-		nil,           // Values
-		format,        // Event Format flag
-		0,             // Buffer size (0 indicates query for size)
-		nil,           // Buffer
-		&requiredSize, // Size required for buffer
+		0,      // Message ID
+		0,      // Value Count (no values passed)
+		nil,    // Pointer to values (null)
+		format, // Format flag
 	)
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); !ok || errno != 122 { // ERROR_INSUFFICIENT_BUFFER
@@ -92,20 +88,15 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 		}
 	}
 
-	// Allocate sufficient space for formatted message
-	buf := make([]uint16, requiredSize)
-
-	// Second call to fetch the actual message
-	err = EvtFormatMessage(
+	// Allocate buffer space for the formatted message
+	buf := make([]uint16, size)
+	_, err = EvtFormatMessage(
 		syscall.Handle(eventPublisherHandle),
 		syscall.Handle(eventHandle),
 		0,
 		0,
 		nil,
 		format,
-		requiredSize,
-		&buf[0],
-		&usedSize,
 	)
 	if err != nil {
 		return "", err

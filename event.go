@@ -61,7 +61,10 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	return ListenerHandle(listenerHandle), nil
 }
 
-/* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
+/* Get the formatted string that represents this message. This method wraps EvtFormatMessage.
+   For specific error cases like missing locale resources (ERROR_MR_MID_NOT_FOUND) or
+   incorrect parameters (ERROR_INVALID_PARAMETER), it returns a descriptive placeholder
+   message instead of an error to ensure events are still processed. */
 func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
 	// Check if handles are valid
 	if eventPublisherHandle == 0 {
@@ -76,6 +79,16 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); !ok || errno != 122 {
 			// Check if the error is ERR_INSUFICIENT_BUFFER
+			// For specific error codes, return a fallback message instead of an error
+			if errno, ok := err.(syscall.Errno); ok {
+				// ERROR_MR_MID_NOT_FOUND (0x13D) - The locale specific resource for the desired message is not present
+				// ERROR_INVALID_PARAMETER (0x57) - The parameter is incorrect
+				if errno == 0x13D {
+					return "[Resource not available in current locale]", nil
+				} else if errno == 0x57 {
+					return "[Invalid parameter for message formatting]", nil
+				}
+			}
 			return "", err
 		}
 	}
@@ -88,6 +101,14 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 	buf := make([]uint16, size)
 	err = EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), uint32(len(buf)), &buf[0], &size)
 	if err != nil {
+		// Handle specific error codes for the second call as well
+		if errno, ok := err.(syscall.Errno); ok {
+			if errno == 0x13D {
+				return "[Resource not available in current locale]", nil
+			} else if errno == 0x57 {
+				return "[Invalid parameter for message formatting]", nil
+			}
+		}
 		return "", err
 	}
 	return syscall.UTF16ToString(buf), nil

@@ -185,35 +185,75 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		if publisherHandleErr == nil {
 
 			if self.RenderKeywords {
-				keywordsText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageKeyword)
+				var err error
+				keywordsText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageKeyword)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting keywords: %v", err))
+				}
 			}
 
 			if self.RenderMessage {
-				msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+				var err error
+				msgText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting message: %v", err))
+				}
 			}
 
 			if self.RenderLevel {
-				lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+				var err error
+				lvlText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting level: %v", err))
+				}
 			}
 
 			if self.RenderTask {
-				taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+				var err error
+				taskText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting task: %v", err))
+				}
 			}
 
 			if self.RenderProvider {
-				providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+				var err error
+				providerText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting provider: %v", err))
+				}
 			}
 
 			if self.RenderOpcode {
-				opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+				var err error
+				opcodeText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting opcode: %v", err))
+				}
 			}
 
 			if self.RenderChannel {
-				channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+				var err error
+				channelText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting channel: %v", err))
+				}
 			}
 
 			if self.RenderId {
-				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+				var err error
+				idText, err = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+				if err != nil {
+					// Log the error but continue processing the event
+					self.PublishError(fmt.Errorf("Error formatting id: %v", err))
+				}
 			}
 		}
 	}

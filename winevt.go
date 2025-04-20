@@ -160,58 +160,12 @@ func EvtClose(Object syscall.Handle) error {
 	return nil
 }
 
-// EvtFormatMessage safely wraps the Windows API function
-func EvtFormatMessage(
-	pubHandle syscall.Handle,
-	evtHandle syscall.Handle,
-	messageID uint32,
-	valueCount uint32,
-	values *uint16,
-	formatFlags EVT_FORMAT_MESSAGE_FLAGS,
-) (string, error) {
-	var bufferUsed uint32
-	var propertyCount uint32
-
-	// Step 1: First call to get required buffer size
-	r1, _, err := evtFormatMessage.Call(
-		uintptr(pubHandle),
-		uintptr(evtHandle),
-		uintptr(messageID),
-		uintptr(valueCount),
-		uintptr(unsafe.Pointer(values)),
-		uintptr(formatFlags),
-		0, // Zero buffer size
-		0, // No buffer
-		uintptr(unsafe.Pointer(&bufferUsed)),
-		uintptr(unsafe.Pointer(&propertyCount)),
-	)
-	if r1 == 0 && err != syscall.ERROR_INSUFFICIENT_BUFFER {
-		// Return if the error is not a buffer size issue
-		return "", err
-	}
-
-	// Step 2: Allocate the buffer
-	buffer := make([]uint16, bufferUsed/2) // UTF-16 = 2 bytes per character
-
-	// Step 3: Second call with allocated buffer
-	r1, _, err = evtFormatMessage.Call(
-		uintptr(pubHandle),
-		uintptr(evtHandle),
-		uintptr(messageID),
-		uintptr(valueCount),
-		uintptr(unsafe.Pointer(values)),
-		uintptr(formatFlags),
-		uintptr(bufferUsed),
-		uintptr(unsafe.Pointer(&buffer[0])),
-		uintptr(unsafe.Pointer(&bufferUsed)),
-		uintptr(unsafe.Pointer(&propertyCount)),
-	)
+func EvtFormatMessage(PublisherMetadata, Event syscall.Handle, MessageId, ValueCount uint32, Values *byte, Flags, BufferSize uint32, Buffer *uint16, BufferUsed *uint32) error {
+	r1, _, err := evtFormatMessage.Call(uintptr(PublisherMetadata), uintptr(Event), uintptr(MessageId), uintptr(ValueCount), uintptr(unsafe.Pointer(Values)), uintptr(Flags), uintptr(BufferSize), uintptr(unsafe.Pointer(Buffer)), uintptr(unsafe.Pointer(BufferUsed)))
 	if r1 == 0 {
-		return "", err
+		return err
 	}
-
-	// Convert UTF-16 to Go string
-	return syscall.UTF16ToString(buffer), nil
+	return nil
 }
 
 func EvtCreateRenderContext(ValuePathsCount uint32, ValuePaths uintptr, Flags uint32) (syscall.Handle, error) {

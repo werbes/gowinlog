@@ -218,7 +218,10 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		}
 	}
 
-	CloseEventHandle(uint64(publisherHandle))
+	// Only close the publisher handle if it was successfully opened
+	if publisherHandleErr == nil && publisherHandle != 0 {
+		CloseEventHandle(uint64(publisherHandle))
+	}
 
 	event := WinLogEvent{
 		Xml:               xml,

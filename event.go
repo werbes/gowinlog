@@ -63,6 +63,14 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 
 /* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
 func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
+	// Check if handles are valid
+	if eventPublisherHandle == 0 {
+		return "", fmt.Errorf("invalid publisher handle")
+	}
+	if eventHandle == 0 {
+		return "", fmt.Errorf("invalid event handle")
+	}
+
 	var size uint32 = 0
 	err := EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), 0, nil, &size)
 	if err != nil {
@@ -71,6 +79,12 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 			return "", err
 		}
 	}
+
+	// Additional check to ensure size is valid
+	if size == 0 {
+		return "", fmt.Errorf("buffer size is 0")
+	}
+
 	buf := make([]uint16, size)
 	err = EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), uint32(len(buf)), &buf[0], &size)
 	if err != nil {
@@ -88,6 +102,14 @@ func GetLastError() error {
    Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
    or RenderUIntField depending on type. This buffer must be freed after use. */
 func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (EvtVariant, error) {
+	// Check if handles are valid
+	if renderContext == 0 {
+		return nil, fmt.Errorf("invalid render context")
+	}
+	if eventHandle == 0 {
+		return nil, fmt.Errorf("invalid event handle")
+	}
+
 	var bufferUsed uint32 = 0
 	var propertyCount uint32 = 0
 	err := EvtRender(syscall.Handle(renderContext), syscall.Handle(eventHandle), EvtRenderEventValues, 0, nil, &bufferUsed, &propertyCount)
@@ -105,6 +127,11 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 
 // Render the event as XML.
 func RenderEventXML(eventHandle EventHandle) (string, error) {
+	// Check if handle is valid
+	if eventHandle == 0 {
+		return "", fmt.Errorf("invalid event handle")
+	}
+
 	var bufferUsed, propertyCount uint32
 
 	err := EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, 0, nil, &bufferUsed, &propertyCount)
@@ -146,11 +173,19 @@ func GetEventPublisherHandle(renderedFields EvtVariant) (PublisherHandle, error)
 
 /* Close an event handle. */
 func CloseEventHandle(handle uint64) error {
+	// Check if handle is valid
+	if handle == 0 {
+		return fmt.Errorf("invalid handle")
+	}
 	return EvtClose(syscall.Handle(handle))
 }
 
 /* Cancel pending actions on the event handle. */
 func CancelEventHandle(handle uint64) error {
+	// Check if handle is valid
+	if handle == 0 {
+		return fmt.Errorf("invalid handle")
+	}
 	err := EvtCancel(syscall.Handle(handle))
 	if err != nil {
 		return err

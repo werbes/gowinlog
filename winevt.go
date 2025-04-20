@@ -129,89 +129,289 @@ const (
 )
 
 func EvtCreateBookmark(BookmarkXml *uint16) (syscall.Handle, error) {
-	r1, _, err := evtCreateBookmark.Call(uintptr(unsafe.Pointer(BookmarkXml)))
-	if r1 == 0 {
-		return 0, err
+	// Use defer/recover to catch any panics during the call
+	var handle syscall.Handle
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtCreateBookmark: %v", r)
+			}
+		}()
+
+		r1, _, err := evtCreateBookmark.Call(uintptr(unsafe.Pointer(BookmarkXml)))
+		if r1 == 0 {
+			callErr = err
+		} else {
+			handle = syscall.Handle(r1)
+		}
+	}()
+
+	if callErr != nil {
+		return 0, callErr
 	}
-	return syscall.Handle(r1), nil
+	return handle, nil
 }
 
 func EvtUpdateBookmark(Bookmark, Event syscall.Handle) error {
-	r1, _, err := evtUpdateBookmark.Call(uintptr(Bookmark), uintptr(Event))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if Bookmark == 0 {
+		return fmt.Errorf("invalid bookmark handle: 0")
 	}
-	return nil
+	if Event == 0 {
+		return fmt.Errorf("invalid event handle: 0")
+	}
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtUpdateBookmark: %v", r)
+			}
+		}()
+
+		r1, _, err := evtUpdateBookmark.Call(uintptr(Bookmark), uintptr(Event))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }
 
 func EvtRender(Context, Fragment syscall.Handle, Flags, BufferSize uint32, Buffer *uint16, BufferUsed, PropertyCount *uint32) error {
-	r1, _, err := evtRender.Call(uintptr(Context), uintptr(Fragment), uintptr(Flags), uintptr(BufferSize), uintptr(unsafe.Pointer(Buffer)), uintptr(unsafe.Pointer(BufferUsed)), uintptr(unsafe.Pointer(PropertyCount)))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if Fragment == 0 {
+		return fmt.Errorf("invalid fragment handle: %v", Fragment)
 	}
-	return nil
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtRender: %v", r)
+			}
+		}()
+
+		r1, _, err := evtRender.Call(uintptr(Context), uintptr(Fragment), uintptr(Flags), uintptr(BufferSize), uintptr(unsafe.Pointer(Buffer)), uintptr(unsafe.Pointer(BufferUsed)), uintptr(unsafe.Pointer(PropertyCount)))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }
 
 func EvtClose(Object syscall.Handle) error {
-	r1, _, err := evtClose.Call(uintptr(Object))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if Object == 0 {
+		return fmt.Errorf("invalid object handle: 0")
 	}
-	return nil
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtClose: %v", r)
+			}
+		}()
+
+		r1, _, err := evtClose.Call(uintptr(Object))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }
 
 func EvtFormatMessage(PublisherMetadata, Event syscall.Handle, MessageId, ValueCount uint32, Values *byte, Flags, BufferSize uint32, Buffer *uint16, BufferUsed *uint32) error {
-	r1, _, err := evtFormatMessage.Call(uintptr(PublisherMetadata), uintptr(Event), uintptr(MessageId), uintptr(ValueCount), uintptr(unsafe.Pointer(Values)), uintptr(Flags), uintptr(BufferSize), uintptr(unsafe.Pointer(Buffer)), uintptr(unsafe.Pointer(BufferUsed)))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if PublisherMetadata == 0 || Event == 0 {
+		return fmt.Errorf("invalid handle: PublisherMetadata=%v, Event=%v", PublisherMetadata, Event)
 	}
-	return nil
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtFormatMessage: %v", r)
+			}
+		}()
+
+		r1, _, err := evtFormatMessage.Call(uintptr(PublisherMetadata), uintptr(Event), uintptr(MessageId), uintptr(ValueCount), uintptr(unsafe.Pointer(Values)), uintptr(Flags), uintptr(BufferSize), uintptr(unsafe.Pointer(Buffer)), uintptr(unsafe.Pointer(BufferUsed)))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }
 
 func EvtCreateRenderContext(ValuePathsCount uint32, ValuePaths uintptr, Flags uint32) (syscall.Handle, error) {
-	r1, _, err := evtCreateRenderContext.Call(uintptr(ValuePathsCount), ValuePaths, uintptr(Flags))
-	if r1 == 0 {
-		return 0, err
+	// Use defer/recover to catch any panics during the call
+	var handle syscall.Handle
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtCreateRenderContext: %v", r)
+			}
+		}()
+
+		r1, _, err := evtCreateRenderContext.Call(uintptr(ValuePathsCount), ValuePaths, uintptr(Flags))
+		if r1 == 0 {
+			callErr = err
+		} else {
+			handle = syscall.Handle(r1)
+		}
+	}()
+
+	if callErr != nil {
+		return 0, callErr
 	}
-	return syscall.Handle(r1), nil
+	return handle, nil
 }
 
 func EvtSubscribe(Session, SignalEvent syscall.Handle, ChannelPath, Query *uint16, Bookmark syscall.Handle, context uintptr, Callback uintptr, Flags uint32) (syscall.Handle, error) {
-	r1, _, err := evtSubscribe.Call(uintptr(Session), uintptr(SignalEvent), uintptr(unsafe.Pointer(ChannelPath)), uintptr(unsafe.Pointer(Query)), uintptr(Bookmark), context, Callback, uintptr(Flags))
-	if r1 == 0 {
-		return 0, err
+	// Add defensive checks to prevent crashes
+	if ChannelPath == nil {
+		return 0, fmt.Errorf("channel path is nil")
 	}
-	return syscall.Handle(r1), nil
+
+	// Use defer/recover to catch any panics during the call
+	var handle syscall.Handle
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtSubscribe: %v", r)
+			}
+		}()
+
+		r1, _, err := evtSubscribe.Call(uintptr(Session), uintptr(SignalEvent), uintptr(unsafe.Pointer(ChannelPath)), uintptr(unsafe.Pointer(Query)), uintptr(Bookmark), context, Callback, uintptr(Flags))
+		if r1 == 0 {
+			callErr = err
+		} else {
+			handle = syscall.Handle(r1)
+		}
+	}()
+
+	if callErr != nil {
+		return 0, callErr
+	}
+	return handle, nil
 }
 
 func EvtQuery(Session syscall.Handle, Path, Query *uint16, Flags uint32) (syscall.Handle, error) {
-	r1, _, err := evtQuery.Call(uintptr(Session), uintptr(unsafe.Pointer(Path)), uintptr(unsafe.Pointer(Query)), uintptr(Flags))
-	if r1 == 0 {
-		return 0, err
+	// Use defer/recover to catch any panics during the call
+	var handle syscall.Handle
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtQuery: %v", r)
+			}
+		}()
+
+		r1, _, err := evtQuery.Call(uintptr(Session), uintptr(unsafe.Pointer(Path)), uintptr(unsafe.Pointer(Query)), uintptr(Flags))
+		if r1 == 0 {
+			callErr = err
+		} else {
+			handle = syscall.Handle(r1)
+		}
+	}()
+
+	if callErr != nil {
+		return 0, callErr
 	}
-	return syscall.Handle(r1), nil
+	return handle, nil
 }
 
 func EvtOpenPublisherMetadata(Session syscall.Handle, PublisherIdentity, LogFilePath *uint16, Locale, Flags uint32) (syscall.Handle, error) {
-	r1, _, err := evtOpenPublisherMetadata.Call(uintptr(Session), uintptr(unsafe.Pointer(PublisherIdentity)), uintptr(unsafe.Pointer(LogFilePath)), uintptr(Locale), uintptr(Flags))
-	if r1 == 0 {
-		return 0, err
+	// Add defensive checks to prevent crashes
+	if PublisherIdentity == nil {
+		return 0, fmt.Errorf("invalid publisher identity: nil")
 	}
-	return syscall.Handle(r1), nil
+
+	// Use defer/recover to catch any panics during the call
+	var handle syscall.Handle
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtOpenPublisherMetadata: %v", r)
+			}
+		}()
+
+		r1, _, err := evtOpenPublisherMetadata.Call(uintptr(Session), uintptr(unsafe.Pointer(PublisherIdentity)), uintptr(unsafe.Pointer(LogFilePath)), uintptr(Locale), uintptr(Flags))
+		if r1 == 0 {
+			callErr = err
+		} else {
+			handle = syscall.Handle(r1)
+		}
+	}()
+
+	if callErr != nil {
+		return 0, callErr
+	}
+	return handle, nil
 }
 
 func EvtCancel(handle syscall.Handle) error {
-	r1, _, err := evtCancel.Call(uintptr(handle))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if handle == 0 {
+		return fmt.Errorf("invalid handle: 0")
 	}
-	return nil
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtCancel: %v", r)
+			}
+		}()
+
+		r1, _, err := evtCancel.Call(uintptr(handle))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }
 
 func EvtNext(ResultSet syscall.Handle, EventArraySize uint32, EventArray *syscall.Handle, Timeout, Flags uint32, Returned *uint32) error {
-	r1, _, err := evtNext.Call(uintptr(ResultSet), uintptr(EventArraySize), uintptr(unsafe.Pointer(EventArray)), uintptr(Timeout), uintptr(Flags), uintptr(unsafe.Pointer(Returned)))
-	if r1 == 0 {
-		return err
+	// Add defensive checks to prevent crashes
+	if ResultSet == 0 {
+		return fmt.Errorf("invalid result set handle: 0")
 	}
-	return nil
+	if EventArray == nil {
+		return fmt.Errorf("event array is nil")
+	}
+	if Returned == nil {
+		return fmt.Errorf("returned pointer is nil")
+	}
+
+	// Use defer/recover to catch any panics during the call
+	var callErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				callErr = fmt.Errorf("panic in EvtNext: %v", r)
+			}
+		}()
+
+		r1, _, err := evtNext.Call(uintptr(ResultSet), uintptr(EventArraySize), uintptr(unsafe.Pointer(EventArray)), uintptr(Timeout), uintptr(Flags), uintptr(unsafe.Pointer(Returned)))
+		if r1 == 0 {
+			callErr = err
+		}
+	}()
+
+	return callErr
 }

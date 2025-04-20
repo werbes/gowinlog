@@ -13,8 +13,7 @@ Godocs
 Installation
 =======
 
-include the log with winlog "github.com/werbes/gowinlog"
-go mod tidy
+just go get the thing
 
 Features
 ========

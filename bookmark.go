@@ -3,8 +3,12 @@
 package winlog
 
 import (
+	"sync"
 	"syscall"
 )
+
+// bookmarkMutex protects access to bookmark handles
+var bookmarkMutex sync.Mutex
 
 /*Bookmarks allow you to remember a specific event and restore subscription at that point of time*/
 
@@ -32,11 +36,16 @@ func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
 
 /* Update a bookmark to store the channel and ID of the given event */
 func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
+	bookmarkMutex.Lock()
+	defer bookmarkMutex.Unlock()
 	return EvtUpdateBookmark(syscall.Handle(bookmarkHandle), syscall.Handle(eventHandle))
 }
 
 /* Serialize the bookmark as XML */
 func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
+	bookmarkMutex.Lock()
+	defer bookmarkMutex.Unlock()
+
 	var dwUsed uint32
 	var dwProps uint32
 	EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, 0, nil, &dwUsed, &dwProps)

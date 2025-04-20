@@ -22,6 +22,7 @@ Features
 - Includes wrapper for wevtapi.dll, and a high level API
 - Supports bookmarks for resuming consumption
 - Filter events using XPath expressions 
+- Thread-safe operations for concurrent usage
 
 Usage
 =======
@@ -68,3 +69,14 @@ Low-level API
 ------
 
 `winevt.go` provides wrappers around the relevant functions in `wevtapi.dll`.
+
+Thread Safety
+------
+
+The library is designed to be thread-safe, allowing multiple goroutines to interact with it concurrently:
+
+- The `WinLogWatcher` struct uses internal synchronization to protect its state.
+- Bookmark operations (UpdateBookmark, RenderBookmark) are synchronized to prevent race conditions when multiple goroutines operate on the same bookmark handle.
+- Event channels are safe for concurrent consumption.
+
+This means you can safely use the library in multi-threaded applications without worrying about race conditions.

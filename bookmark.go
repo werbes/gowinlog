@@ -3,6 +3,7 @@
 package winlog
 
 import (
+	"fmt"
 	"sync"
 	"syscall"
 )
@@ -46,13 +47,45 @@ func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
 	bookmarkMutex.Lock()
 	defer bookmarkMutex.Unlock()
 
-	var dwUsed uint32
-	var dwProps uint32
-	EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, 0, nil, &dwUsed, &dwProps)
-	buf := make([]uint16, dwUsed)
-	err := EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, uint32(len(buf)), &buf[0], &dwUsed, &dwProps)
-	if err != nil {
-		return "", err
+	// Check if handle is valid
+	if bookmarkHandle == 0 {
+		return "", fmt.Errorf("invalid bookmark handle")
 	}
-	return syscall.UTF16ToString(buf), nil
+
+	// Use defer/recover to catch any panics that might occur
+	var result string
+	var resultErr error
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				result = "[Recovered from panic in RenderBookmark]"
+				resultErr = fmt.Errorf("panic in RenderBookmark: %v", r)
+			}
+		}()
+
+		var dwUsed uint32
+		var dwProps uint32
+		err := EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, 0, nil, &dwUsed, &dwProps)
+		if err != nil {
+			resultErr = err
+			return
+		}
+
+		// Ensure we don't allocate an excessively large buffer
+		if dwUsed > 1024*1024 { // 1MB limit
+			resultErr = fmt.Errorf("bookmark too large to render: %d bytes", dwUsed)
+			return
+		}
+
+		buf := make([]uint16, dwUsed)
+		err = EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, uint32(len(buf)), &buf[0], &dwUsed, &dwProps)
+		if err != nil {
+			resultErr = err
+			return
+		}
+		result = syscall.UTF16ToString(buf)
+	}()
+
+	return result, resultErr
 }

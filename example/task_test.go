@@ -16,20 +16,29 @@ func main() {
 		fmt.Printf("Couldn't create watcher: %v\n", err)
 		return
 	}
+	
+	// Enable task rendering
+	watcher.RenderTask = true
+	
 	err = watcher.SubscribeFromBeginning("Application", "*")
 	if err != nil {
 		fmt.Printf("Couldn't subscribe to Application: %v", err)
+		return
 	}
+	
+	fmt.Println("Watching for events. Press Ctrl+C to exit.")
+	fmt.Println("Task ID | Task Text | Provider | EventID")
+	fmt.Println("------------------------------------------")
+	
 	for {
 		select {
 		case evt := <-watcher.Event():
-			fmt.Printf("Event ID: %d\n", evt.EventId)
-			fmt.Printf("Message: %s\n", evt.Msg)
-			fmt.Printf("Level: %s\n", evt.LevelText)
-			fmt.Printf("Provider: %s\n", evt.ProviderText)
-			fmt.Printf("Channel: %s\n", evt.ChannelText)
-			bookmark := evt.Bookmark
-			fmt.Printf("Bookmark: %v\n\n", bookmark)
+			// Print just the task information to verify our changes
+			fmt.Printf("%d | %s | %s | %d\n", 
+				evt.Task, 
+				evt.TaskText, 
+				evt.ProviderName,
+				evt.EventId)
 		case err := <-watcher.Error():
 			fmt.Printf("Error: %v\n\n", err)
 		default:

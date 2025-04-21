@@ -20,6 +20,10 @@ func main() {
 	if err != nil {
 		fmt.Printf("Couldn't subscribe to Application: %v", err)
 	}
+	
+	fmt.Println("Watching for events. Press Ctrl+C to exit.")
+	
+	count := 0
 	for {
 		select {
 		case evt := <-watcher.Event():
@@ -28,8 +32,13 @@ func main() {
 			fmt.Printf("Level: %s\n", evt.LevelText)
 			fmt.Printf("Provider: %s\n", evt.ProviderText)
 			fmt.Printf("Channel: %s\n", evt.ChannelText)
-			bookmark := evt.Bookmark
-			fmt.Printf("Bookmark: %v\n\n", bookmark)
+			fmt.Printf("Bookmark: %v\n\n", evt.Bookmark)
+			
+			count++
+			if count >= 10 {
+				fmt.Println("Received 10 events. Exiting.")
+				return
+			}
 		case err := <-watcher.Error():
 			fmt.Printf("Error: %v\n\n", err)
 		default:

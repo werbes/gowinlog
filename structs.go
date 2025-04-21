@@ -1,4 +1,3 @@
-//go:build windows
 // +build windows
 
 package winlog
@@ -67,9 +66,6 @@ type WinLogWatcher struct {
 	watches       map[string]*channelWatcher
 	watchMutex    sync.Mutex
 	shutdown      chan interface{}
-
-	// WMI-based watcher that will be used for all operations
-	wmiWatcher *WMIEventLogWatcher
 
 	// Optionally render localized fields. EvtFormatMessage() is slow, so
 	// skipping these fields provides a big speedup.

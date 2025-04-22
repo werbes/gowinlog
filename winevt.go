@@ -39,6 +39,18 @@ func mustFindProc(mod *windows.LazyDLL, functionName string) *windows.LazyProc {
 	return proc
 }
 
+// findProc attempts to load a procedure from a DLL but doesn't panic if it's not found
+func findProc(mod *windows.LazyDLL, functionName string) *windows.LazyProc {
+	if mod.Load() != nil {
+		return nil
+	}
+	proc := mod.NewProc(functionName)
+	if proc == nil || proc.Find() != nil {
+		return nil
+	}
+	return proc
+}
+
 func init() {
 	winevtDll := windows.NewLazySystemDLL("wevtapi.dll")
 	evtCreateBookmark = mustFindProc(winevtDll, "EvtCreateBookmark")
@@ -52,7 +64,8 @@ func init() {
 	evtQuery = mustFindProc(winevtDll, "EvtQuery")
 	evtOpenPublisherMetadata = mustFindProc(winevtDll, "EvtOpenPublisherMetadata")
 	evtNext = mustFindProc(winevtDll, "EvtNext")
-	evtCreateEventCopy = mustFindProc(winevtDll, "EvtCreateEventCopy")
+	// Use findProc for EvtCreateEventCopy as it might not be available in all versions of wevtapi.dll
+	evtCreateEventCopy = findProc(winevtDll, "EvtCreateEventCopy")
 }
 
 type EVT_SUBSCRIBE_FLAGS int
@@ -219,6 +232,11 @@ func EvtNext(ResultSet syscall.Handle, EventArraySize uint32, EventArray *syscal
 }
 
 func EvtCreateEventCopy(Event syscall.Handle) (syscall.Handle, error) {
+	// If the function is not available in the DLL, return the original handle
+	if evtCreateEventCopy == nil {
+		return Event, nil
+	}
+
 	r1, _, err := evtCreateEventCopy.Call(uintptr(Event))
 	if r1 == 0 {
 		return 0, err

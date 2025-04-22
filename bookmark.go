@@ -3,6 +3,7 @@
 package winlog
 
 import (
+	"fmt"
 	"syscall"
 )
 
@@ -32,7 +33,15 @@ func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
 
 /* Update a bookmark to store the channel and ID of the given event */
 func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
-	return EvtUpdateBookmark(syscall.Handle(bookmarkHandle), syscall.Handle(eventHandle))
+	// Create a copy of the event handle to prevent access issues if the event is modified by Windows
+	eventCopy, err := EvtCreateEventCopy(syscall.Handle(eventHandle))
+	if err != nil {
+		return fmt.Errorf("Failed to create event copy for bookmark update: %v", err)
+	}
+	defer CloseEventHandle(uint64(eventCopy))
+
+	// Use the copied event handle for the update
+	return EvtUpdateBookmark(syscall.Handle(bookmarkHandle), eventCopy)
 }
 
 /* Serialize the bookmark as XML */

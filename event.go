@@ -4,7 +4,9 @@ package winlog
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -61,22 +63,162 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	return ListenerHandle(listenerHandle), nil
 }
 
-/* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
-func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
-	var size uint32 = 0
-	err := EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), 0, nil, &size)
+// EventXML represents the structure of a Windows Event Log XML
+type EventXML struct {
+	System struct {
+		Provider struct {
+			Name        string `xml:"Name,attr"`
+			Guid        string `xml:"Guid,attr"`
+			EventSourceName string `xml:"EventSourceName,attr"`
+		} `xml:"Provider"`
+		EventID     struct {
+			Value       int    `xml:",chardata"`
+			Qualifiers  string `xml:"Qualifiers,attr"`
+		} `xml:"EventID"`
+		Version     int    `xml:"Version"`
+		Level       int    `xml:"Level"`
+		Task        int    `xml:"Task"`
+		Opcode      int    `xml:"Opcode"`
+		Keywords    string `xml:"Keywords"`
+		TimeCreated struct {
+			SystemTime string `xml:"SystemTime,attr"`
+		} `xml:"TimeCreated"`
+		EventRecordID int    `xml:"EventRecordID"`
+		Correlation   struct {
+			ActivityID    string `xml:"ActivityID,attr"`
+			RelatedActivityID string `xml:"RelatedActivityID,attr"`
+		} `xml:"Correlation"`
+		Execution    struct {
+			ProcessID   int    `xml:"ProcessID,attr"`
+			ThreadID    int    `xml:"ThreadID,attr"`
+		} `xml:"Execution"`
+		Channel     string `xml:"Channel"`
+		Computer    string `xml:"Computer"`
+		Security    struct {
+			UserID      string `xml:"UserID,attr"`
+		} `xml:"Security"`
+	} `xml:"System"`
+	EventData struct {
+		Data []string `xml:"Data"`
+	} `xml:"EventData"`
+	RenderingInfo struct {
+		Message     string `xml:"Message"`
+		Level       string `xml:"Level"`
+		Task        string `xml:"Task"`
+		Opcode      string `xml:"Opcode"`
+		Channel     string `xml:"Channel"`
+		Provider    string `xml:"Provider"`
+		Keywords    struct {
+			Keyword []string `xml:"Keyword"`
+		} `xml:"Keywords"`
+	} `xml:"RenderingInfo"`
+}
+
+// ExtractFromXML parses the XML representation of an event and extracts the specified information
+func ExtractFromXML(xmlData string, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
+	// If XML is empty, return empty string
+	if xmlData == "" {
+		return "", nil
+	}
+
+	var event EventXML
+	err := xml.Unmarshal([]byte(xmlData), &event)
 	if err != nil {
-		if errno, ok := err.(syscall.Errno); !ok || errno != 122 {
-			// Check if the error is ERR_INSUFICIENT_BUFFER
-			return "", err
+		return "", fmt.Errorf("Failed to parse event XML: %v", err)
+	}
+
+	switch format {
+	case EvtFormatMessageEvent:
+		// Try to get message from RenderingInfo first
+		if event.RenderingInfo.Message != "" {
+			return event.RenderingInfo.Message, nil
 		}
+		// If not available, construct a basic message from event data
+		var msg strings.Builder
+		msg.WriteString(fmt.Sprintf("Event ID: %d", event.System.EventID.Value))
+		if len(event.EventData.Data) > 0 {
+			msg.WriteString(" - Data: ")
+			for i, data := range event.EventData.Data {
+				if i > 0 {
+					msg.WriteString(", ")
+				}
+				msg.WriteString(data)
+			}
+		}
+		return msg.String(), nil
+	case EvtFormatMessageLevel:
+		if event.RenderingInfo.Level != "" {
+			return event.RenderingInfo.Level, nil
+		}
+		// Map level numbers to common names
+		switch event.System.Level {
+		case 0:
+			return "LogAlways", nil
+		case 1:
+			return "Critical", nil
+		case 2:
+			return "Error", nil
+		case 3:
+			return "Warning", nil
+		case 4:
+			return "Information", nil
+		case 5:
+			return "Verbose", nil
+		default:
+			return fmt.Sprintf("Level %d", event.System.Level), nil
+		}
+	case EvtFormatMessageTask:
+		if event.RenderingInfo.Task != "" {
+			return event.RenderingInfo.Task, nil
+		}
+		return fmt.Sprintf("Task %d", event.System.Task), nil
+	case EvtFormatMessageOpcode:
+		if event.RenderingInfo.Opcode != "" {
+			return event.RenderingInfo.Opcode, nil
+		}
+		// Map common opcodes
+		switch event.System.Opcode {
+		case 0:
+			return "Info", nil
+		case 1:
+			return "Start", nil
+		case 2:
+			return "Stop", nil
+		default:
+			return fmt.Sprintf("Opcode %d", event.System.Opcode), nil
+		}
+	case EvtFormatMessageKeyword:
+		if len(event.RenderingInfo.Keywords.Keyword) > 0 {
+			return strings.Join(event.RenderingInfo.Keywords.Keyword, ", "), nil
+		}
+		return event.System.Keywords, nil
+	case EvtFormatMessageChannel:
+		if event.RenderingInfo.Channel != "" {
+			return event.RenderingInfo.Channel, nil
+		}
+		return event.System.Channel, nil
+	case EvtFormatMessageProvider:
+		if event.RenderingInfo.Provider != "" {
+			return event.RenderingInfo.Provider, nil
+		}
+		return event.System.Provider.Name, nil
+	case EvtFormatMessageId:
+		return fmt.Sprintf("%d", event.System.EventID.Value), nil
+	default:
+		return "", fmt.Errorf("Unsupported format flag: %d", format)
 	}
-	buf := make([]uint16, size)
-	err = EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), uint32(len(buf)), &buf[0], &size)
+}
+
+/* Get the formatted string that represents this message. This method uses XML parsing instead of EvtFormatMessage. */
+func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
+	// Get the XML representation of the event
+	xml, err := RenderEventXML(eventHandle)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to render event XML: %v", err)
 	}
-	return syscall.UTF16ToString(buf), nil
+
+	// Extract the requested information from the XML
+	return ExtractFromXML(xml, format)
 }
 
 /* Get the formatted string for the last error which occurred. Wraps GetLastError and FormatMessage. */
@@ -88,15 +230,22 @@ func GetLastError() error {
    Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
    or RenderUIntField depending on type. This buffer must be freed after use. */
 func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (EvtVariant, error) {
+	// Create a copy of the event handle to prevent access issues if the event is modified by Windows
+	eventCopy, err := EvtCreateEventCopy(syscall.Handle(eventHandle))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create event copy for rendering values: %v", err)
+	}
+	defer CloseEventHandle(uint64(eventCopy))
+
 	var bufferUsed uint32 = 0
 	var propertyCount uint32 = 0
-	err := EvtRender(syscall.Handle(renderContext), syscall.Handle(eventHandle), EvtRenderEventValues, 0, nil, &bufferUsed, &propertyCount)
+	err = EvtRender(syscall.Handle(renderContext), eventCopy, EvtRenderEventValues, 0, nil, &bufferUsed, &propertyCount)
 	if bufferUsed == 0 {
 		return nil, err
 	}
 	buffer := make([]byte, bufferUsed)
 	bufSize := bufferUsed
-	err = EvtRender(syscall.Handle(renderContext), syscall.Handle(eventHandle), EvtRenderEventValues, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
+	err = EvtRender(syscall.Handle(renderContext), eventCopy, EvtRenderEventValues, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +254,16 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 
 // Render the event as XML.
 func RenderEventXML(eventHandle EventHandle) (string, error) {
+	// Create a copy of the event handle to prevent access issues if the event is modified by Windows
+	eventCopy, err := EvtCreateEventCopy(syscall.Handle(eventHandle))
+	if err != nil {
+		return "", fmt.Errorf("Failed to create event copy for XML rendering: %v", err)
+	}
+	defer CloseEventHandle(uint64(eventCopy))
+
 	var bufferUsed, propertyCount uint32
 
-	err := EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, 0, nil, &bufferUsed, &propertyCount)
+	err = EvtRender(0, eventCopy, EvtRenderEventXml, 0, nil, &bufferUsed, &propertyCount)
 
 	if bufferUsed == 0 {
 		return "", err
@@ -116,7 +272,7 @@ func RenderEventXML(eventHandle EventHandle) (string, error) {
 	buffer := make([]byte, bufferUsed)
 	bufSize := bufferUsed
 
-	err = EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
+	err = EvtRender(0, eventCopy, EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
 	if err != nil {
 		return err.Error(), err
 	}
@@ -183,7 +339,14 @@ func eventCallback(Action uint32, Context unsafe.Pointer, handle syscall.Handle)
 	if Action == 0 {
 		cbWrap.callback.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
 	} else {
-		cbWrap.callback.PublishEvent(EventHandle(handle), cbWrap.subscribedChannel)
+		// Create a copy of the event handle to prevent access issues if the event is modified by Windows
+		eventCopy, err := EvtCreateEventCopy(handle)
+		if err != nil {
+			cbWrap.callback.PublishError(fmt.Errorf("Failed to create event copy in callback: %v", err))
+			return 0
+		}
+		// Use the copied event handle for all operations
+		cbWrap.callback.PublishEvent(EventHandle(eventCopy), cbWrap.subscribedChannel)
 	}
 	return 0
 }

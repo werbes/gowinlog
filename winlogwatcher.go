@@ -274,8 +274,8 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle, subscribedChannel st
 	}
 	defer CloseEventHandle(uint64(eventCopy))
 
-	// Convert the event from the event log schema
-	event, err := self.convertEvent(handle, subscribedChannel)
+	// Convert the event from the event log schema using the copied handle
+	event, err := self.convertEvent(EventHandle(eventCopy), subscribedChannel)
 	if err != nil {
 		self.PublishError(err)
 		return

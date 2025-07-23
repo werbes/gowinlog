@@ -100,7 +100,25 @@ type EventXML struct {
 	} `xml:"System"`
 	EventData struct {
 		Data []string `xml:"Data"`
+		// Some events use binary data
+		Binary []struct {
+			Value string `xml:",chardata"`
+		} `xml:"Binary"`
 	} `xml:"EventData"`
+	UserData struct {
+		// UserData can contain any XML structure, so we'll use a map to store it
+		// This is important for handling various event types
+		XMLName xml.Name
+		Attrs   []xml.Attr `xml:",any,attr"`
+		Content []byte     `xml:",innerxml"`
+	} `xml:"UserData"`
+	// EventRecordData is used by some event types
+	EventRecordData struct {
+		Data []struct {
+			Name  string `xml:"Name,attr"`
+			Value string `xml:",chardata"`
+		} `xml:"Data"`
+	} `xml:"EventRecordData"`
 	RenderingInfo struct {
 		Message     string `xml:"Message"`
 		Level       string `xml:"Level"`
@@ -133,9 +151,29 @@ func ExtractFromXML(xmlData string, format EVT_FORMAT_MESSAGE_FLAGS) (string, er
 		if event.RenderingInfo.Message != "" {
 			return event.RenderingInfo.Message, nil
 		}
-		// If not available, construct a basic message from event data
+
+		// Check for EventRecordData
+		if len(event.EventRecordData.Data) > 0 {
+			var msg strings.Builder
+			msg.WriteString(fmt.Sprintf("Event ID: %d", event.System.EventID.Value))
+			msg.WriteString(" - EventRecordData: ")
+
+			// Include EventRecordData elements
+			for i, data := range event.EventRecordData.Data {
+				if i > 0 {
+					msg.WriteString(", ")
+				}
+				msg.WriteString(fmt.Sprintf("%s: %s", data.Name, data.Value))
+			}
+
+			return msg.String(), nil
+		}
+
+		// If no EventRecordData, construct a basic message from event data
 		var msg strings.Builder
 		msg.WriteString(fmt.Sprintf("Event ID: %d", event.System.EventID.Value))
+
+		// Include regular data elements if available
 		if len(event.EventData.Data) > 0 {
 			msg.WriteString(" - Data: ")
 			for i, data := range event.EventData.Data {
@@ -145,6 +183,39 @@ func ExtractFromXML(xmlData string, format EVT_FORMAT_MESSAGE_FLAGS) (string, er
 				msg.WriteString(data)
 			}
 		}
+
+		// Include binary data if available
+		if len(event.EventData.Binary) > 0 {
+			if len(event.EventData.Data) > 0 {
+				msg.WriteString("; ")
+			} else {
+				msg.WriteString(" - ")
+			}
+			msg.WriteString("Binary: ")
+			for i, binary := range event.EventData.Binary {
+				if i > 0 {
+					msg.WriteString(", ")
+				}
+				// Limit the binary data length to avoid very long messages
+				value := binary.Value
+				if len(value) > 50 {
+					value = value[:50] + "..."
+				}
+				msg.WriteString(value)
+			}
+		}
+
+		// If we still don't have any data, check UserData as a last resort
+		if len(event.EventData.Data) == 0 && len(event.EventData.Binary) == 0 && len(event.UserData.Content) > 0 {
+			msg.WriteString(" - UserData: ")
+			// Limit the content length to avoid very long messages
+			content := string(event.UserData.Content)
+			if len(content) > 200 {
+				content = content[:200] + "..."
+			}
+			msg.WriteString(content)
+		}
+
 		return msg.String(), nil
 	case EvtFormatMessageLevel:
 		if event.RenderingInfo.Level != "" {

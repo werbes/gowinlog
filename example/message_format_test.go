@@ -16,10 +16,10 @@ func main() {
 		fmt.Printf("Couldn't create watcher: %v\n", err)
 		return
 	}
-	
+
 	// Enable message rendering
 	watcher.RenderMessage = true
-	
+
 	err = watcher.SubscribeFromBeginning("Microsoft-Windows-Sysmon/Operational", "*")
 	if err != nil {
 		fmt.Printf("Couldn't subscribe to Sysmon: %v", err)
@@ -30,11 +30,12 @@ func main() {
 			return
 		}
 	}
-	
+
 	fmt.Println("Watching for events. Press Ctrl+C to exit.")
 	fmt.Println("EventID | Provider | Message")
 	fmt.Println("------------------------------------------")
-	
+	fmt.Println("Testing standard event message handling for all event types")
+
 	for {
 		select {
 		case evt := <-watcher.Event():

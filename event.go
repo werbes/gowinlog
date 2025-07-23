@@ -345,7 +345,7 @@ func RenderEventXML(eventHandle EventHandle) (string, error) {
 
 	err = EvtRender(0, eventCopy, EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
 	if err != nil {
-		return err.Error(), err
+		return "", fmt.Errorf("Failed to render event XML: %v", err)
 	}
 
 	// Remove null bytes

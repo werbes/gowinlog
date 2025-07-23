@@ -200,7 +200,25 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
  		}
 
  		if self.RenderMessage {
- 			msgText, _ = FormatMessage(publisherHandle, copiedHandle, EvtFormatMessageEvent)
+ 			var msgErr error
+ 			msgText, msgErr = FormatMessage(publisherHandle, copiedHandle, EvtFormatMessageEvent)
+ 			if msgErr != nil {
+ 				// If FormatMessage fails, try to extract a basic message from the XML
+ 				if xml != "" {
+ 					// Create a basic message from the event ID and provider
+ 					msgText = fmt.Sprintf("Event ID: %d from %s", eventId, providerName)
+ 					
+ 					// Try to extract data from the XML directly as a fallback
+ 					renderedXml, xmlErr := RenderEventXML(copiedHandle)
+ 					if xmlErr == nil && renderedXml != "" {
+ 						// Extract data from XML as a fallback
+ 						extractedMsg, _ := ExtractFromXML(renderedXml, EvtFormatMessageEvent)
+ 						if extractedMsg != "" {
+ 							msgText = extractedMsg
+ 						}
+ 					}
+ 				}
+ 			}
  		}
 
  		if self.RenderLevel {
